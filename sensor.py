@@ -1,4 +1,5 @@
 from homeassistant.helpers.entity import Entity
+from .psySI import __WBT_DBT_W_P
 import logging
 
 
@@ -51,59 +52,42 @@ class ExampleSensor(Entity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
-        # logger.info(dir(self))
-        # logger.info(dir(self.hass))
+        # logger.debug(dir(self))
+        # logger.debug(dir(self.hass))
         try:
-            logger.info("Temp outdoor (raw sensor value): " + str(self.hass.states.get(self.outdoorTemp).state))
-            logger.info("Temp indoor (raw sensor value):  " + str(self.hass.states.get(self.indoorTemp).state))
-            logger.info("hum outdoor (raw sensor value):  " + str(self.hass.states.get(self.outdoorHum).state))
-            logger.info("hum indoor (raw sensor value):   " + str(self.hass.states.get(self.indoorHum).state))
-            logger.info("pressure (raw sensor value):     " + str(self.hass.states.get(self.pressure).state*100))
+            logger.debug("Temp outdoor (raw sensor value): " + str(self.hass.states.get(self.outdoorTemp).state))
+            logger.debug("Temp indoor (raw sensor value):  " + str(self.hass.states.get(self.indoorTemp).state))
+            logger.debug("hum outdoor (raw sensor value):  " + str(self.hass.states.get(self.outdoorHum).state))
+            logger.debug("hum indoor (raw sensor value):   " + str(self.hass.states.get(self.indoorHum).state))
+            logger.debug("pressure (raw sensor value):     " + str(self.hass.states.get(self.pressure).state))
             temp_out = toKelvin(float(self.hass.states.get(self.outdoorTemp).state))
             temp_in = toKelvin(float(self.hass.states.get(self.indoorTemp).state))
             hum_out = toKelvin(float(self.hass.states.get(self.outdoorHum).state))
             hum_in = toKelvin(float(self.hass.states.get(self.indoorHum).state))
             pressure = float(self.hass.states.get(self.pressure).state)*100
 
-            logger.info("Temp outdoor:      " + str(temp_out))
-            logger.info("Temp indoor :      " + str(temp_in))
-            logger.info("Hum outdoor:       " + str(hum_out))
-            logger.info("Hum indoor :       " + str(hum_in))
-            logger.info("Pressure (pascal): " + str(pressure))
+            logger.debug("Temp outdoor:      " + str(temp_out))
+            logger.debug("Temp indoor :      " + str(temp_in))
+            logger.debug("Hum outdoor:       " + str(hum_out))
+            logger.debug("Hum indoor :       " + str(hum_in))
+            logger.debug("Pressure (pascal): " + str(pressure))
 
-            Tin = temp_out
-            Tewb = getWetBulb(temp_out, hum_out, pressure)
-
-            Tout = temp_in
-            # Formula: https://en.wikipedia.org/wiki/Evaporative_cooler
-            c = (Tin - Tout)/(Tin-Tewb)
+            t_in = temp_out
+            t_ewb = __WBT_DBT_W_P(temp_out, hum_out, pressure)
+            t_out = temp_in
             logger.debug("The dry bulb temperature is ", temp_out)
-            logger.debug("The wet bulb temperature is ", Tewb)
+            logger.debug("The wet bulb temperature is ", t_ewb)
             logger.debug("The relative humidity is    ", hum_out)
-            logger.debug("The efficiency is           ", c)
-            return c
+
+            # Formula: https://en.wikipedia.org/wiki/Evaporative_cooler
+            cooling_efficiency = (t_in - t_out)/(t_in - t_ewb)
+            logger.debug("The efficiency is           ", cooling_efficiency)
+            return cooling_efficiency
         except ValueError as e:
-            logger.debug("Sensor values unavailable")
+            logger.warning("Some input sensor values are still unavailable")
             return 'unknown'
 
-
-def getWetBulb(self, dry, hum, pressure):
-    # dpDepression = dry - dew
-    # return dry - dpDepression/3
-    return __WBT_DBT_W_P(dry,hum, pressure)
 
 def toKelvin(celsius):
     return celsius + 273.15
 
-def __DBT_H_WBT_P(H, WBT, P):
-    [DBTa, DBTb]=[Min_DBT, Max_DBT]
-    DBT=(DBTa+DBTb)/2
-    while DBTb-DBTa>TOL:
-        ya=__W_DBT_WBT_P(DBTa, WBT, P)-__W_DBT_H(DBTa, H)
-        y=__W_DBT_WBT_P(DBT, WBT, P)-__W_DBT_H(DBT, H)
-        if __is_positive(y)==__is_positive(ya):
-            DBTa=DBT
-        else:
-            DBTb=DBT
-        DBT=(DBTa+DBTb)/2
-    return DBT
