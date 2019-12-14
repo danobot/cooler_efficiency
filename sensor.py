@@ -68,31 +68,35 @@ class ExampleSensor(Entity):
             logger.debug("Temp outdoor:      " + str(temp_out))
             logger.debug("Temp indoor :      " + str(temp_in))
             logger.debug("Hum outdoor:       " + str(hum_out))
-            logger.debug("Hum indoor :       " + str(hum_in))
             logger.debug("Pressure (pascal): " + str(pressure))
 
 
             S=SI.state("DBT",temp_out,"RH",hum_out/100,pressure)
-
-            logger.debug("The dry bulb temperature is ", S[0])
-            logger.debug("The specific enthalpy is ", S[1])
-            logger.debug("The relative humidity is ", S[2])
-            logger.debug("The specific volume is ", S[3])
-            logger.debug("The humidity ratio is ", S[4])
-            logger.debug("The wet bulb temperature is ", S[5])
+    # self._attributes = {
+    #     "specific enthalpy": S[1],
+    #     "specific volume": S[3],
+    #     "humidity ratio": S[4])
+    # }
+            logger.debug("The dry bulb temperature is "+ str(S[0]))
+            logger.debug("The specific enthalpy is "+ str(S[1]))
+            logger.debug("The relative humidity is "+ str(S[2]))
+            logger.debug("The specific volume is "+ str(S[3]))
+            logger.debug("The humidity ratio is "+ str(S[4]))
+            logger.debug("The wet bulb temperature is "+ str(S[5]))
             t_in = temp_out
             
-            t_ewb = S[5] # __WBT_DBT_W_P(temp_out, hum_out, pressure)
+            t_wb = S[5] 
             t_out = temp_in
             logger.debug("Calculation ------  " )
-            logger.debug("The dry bulb temperature is ", temp_out)
-            logger.debug("The wet bulb temperature is ", t_ewb)
-            logger.debug("The relative humidity is    ", hum_out)
-
+            logger.debug("The dry bulb temperature (t_in): "+ str(temp_out))
+            logger.debug("The dry bulb temperature (t_out): "+ str(temp_in))
+            logger.debug("The wet bulb temperature is (t_wb)"+ str(t_wb))
+            logger.debug(" (t_in - t_out)/(t_in - t_wb)")
+# ()
             # Formula: https://en.wikipedia.org/wiki/Evaporative_cooler
-            cooling_efficiency = (t_in - t_out)/(t_in - t_ewb)
-            logger.debug("The efficiency is           " + str(cooling_efficiency))
-            self._state = cooling_efficiency
+            cooling_efficiency = (t_in - t_out)/(t_in - t_wb)
+            logger.debug("The efficiency is           " + str(cooling_efficiency*100))
+            self._state = abs(cooling_efficiency*100)
         except ValueError as e:
             logger.warning("Some input sensor values are still unavailable")
 
