@@ -2,7 +2,7 @@
   "domain": "cooler_efficiency",
   "name": "Evaporative Cooling Efficiency",
   "documentation": "https://github.com/danobot/cooler_efficiency",
-  "dependencies": ["sensor"],
+  "dependencies": [],
   "codeowners": ["@danobot"],
-  "requirements": []
+  "requirements": ["psypy"]
 }
