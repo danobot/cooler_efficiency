@@ -21,6 +21,7 @@ class ExampleSensor(Entity):
     def __init__(self, hass, config):
         """Initialize the sensor."""
         print(config)
+        self.hass = hass
         self.outdoorTemp = config.get(CONF_OUTDOOR_TEMP)
         self.outdoorHum = config.get(CONF_OUTDOOR_HUM)
         self.indoorTemp = config.get(CONF_INDOOR_TEMP)
@@ -53,33 +54,36 @@ class ExampleSensor(Entity):
         # logger.info(dir(self))
         # logger.info(dir(self.hass))
         try:
+            logger.info("Temp outdoor (raw sensor value): " + str(self.hass.states.get(self.outdoorTemp).state))
+            logger.info("Temp indoor (raw sensor value):  " + str(self.hass.states.get(self.indoorTemp).state))
+            logger.info("hum outdoor (raw sensor value):  " + str(self.hass.states.get(self.outdoorHum).state))
+            logger.info("hum indoor (raw sensor value):   " + str(self.hass.states.get(self.indoorHum).state))
+            logger.info("pressure (raw sensor value):     " + str(self.hass.states.get(self.pressure).state*100))
             temp_out = toKelvin(float(self.hass.states.get(self.outdoorTemp).state))
-            logger.info("Temp outdoor: " + str(temp_out))
             temp_in = toKelvin(float(self.hass.states.get(self.indoorTemp).state))
-            logger.info("Temp indoor : " + str(temp_in))
             hum_out = toKelvin(float(self.hass.states.get(self.outdoorHum).state))
-            logger.info("hum outdoor: " + str(hum_out))
             hum_in = toKelvin(float(self.hass.states.get(self.indoorHum).state))
-            logger.info("hum indoor : " + str(hum_in))
-            pressure = float(self.hass.states.get(self.pressure).state*100)
-            logger.info("pressure (pascal): " + str(pressure))
+            pressure = float(self.hass.states.get(self.pressure).state)*100
 
-            # S=SI.state("DBT",300,"RH",0.32,101325)
+            logger.info("Temp outdoor:      " + str(temp_out))
+            logger.info("Temp indoor :      " + str(temp_in))
+            logger.info("Hum outdoor:       " + str(hum_out))
+            logger.info("Hum indoor :       " + str(hum_in))
+            logger.info("Pressure (pascal): " + str(pressure))
 
             Tin = temp_out
-            Tewb = getWetBulb(temp_out, hum_out, 1007.9)
-            # Tewb = getWetBulb(temp_out, hum_out, self.pressure)
-            Tout = temp_in
+            Tewb = getWetBulb(temp_out, hum_out, pressure)
 
+            Tout = temp_in
+            # Formula: https://en.wikipedia.org/wiki/Evaporative_cooler
             c = (Tin - Tout)/(Tin-Tewb)
             logger.debug("The dry bulb temperature is ", temp_out)
             logger.debug("The wet bulb temperature is ", Tewb)
-            logger.debug("The relative humidity is ", hum_out)
-            logger.debug("The efficiency is ", c)
-            logger.debug(c)
+            logger.debug("The relative humidity is    ", hum_out)
+            logger.debug("The efficiency is           ", c)
             return c
-        except ValueError:
-            logger.debug("Sensor values unavailable" )
+        except ValueError as e:
+            logger.debug("Sensor values unavailable")
             return 'unknown'
 
 
@@ -88,7 +92,7 @@ def getWetBulb(self, dry, hum, pressure):
     # return dry - dpDepression/3
     return __WBT_DBT_W_P(dry,hum, pressure)
 
-def toKelvin(self, celsius):
+def toKelvin(celsius):
     return celsius + 273.15
 
 def __DBT_H_WBT_P(H, WBT, P):
