@@ -1,6 +1,9 @@
 # Introduction
 This sensor component calculates the efficiency (%) of your evaporative air conditioning system given sensory inputs such as temperature, humidity and atmospheric pressure.
 
+
+![Entity Attributes](entity.png)
+
 # Configuration
 
 ```

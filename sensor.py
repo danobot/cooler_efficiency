@@ -66,18 +66,18 @@ class ExampleSensor(Entity):
         """Return the state attributes of the sensor."""
 
         attr = {}
+        if self._name:
+            attr['name'] = self._name
         if self.t_in and self.t_out and self.t_wb:
                 
             attr = {
-                    "dry bulb temp in": self.t_in-273.15,
-                    "dry bulb temp out": self.t_out-273.15,
-                    "wet bulb temp": self.t_wb-273.15
+                    "dry bulb temp in": round(self.t_in, 2),
+                    "dry bulb temp out": round(self.t_out, 2),
+                    "wet bulb temp": round(self.t_wb, 2)
             }
-        if self._name:
-            attr['name'] = self._name
-            attr["wet bulb sensor"] = self.wetBulb
-            attr["temp in sensor"] = self.outdoorTemp
-            attr["temp out sensor"] =self.indoorTemp
+        attr["wet bulb sensor"] = self.wetBulb
+        attr["temp in sensor"] = self.outdoorTemp
+        attr["temp out sensor"] =self.indoorTemp
 
         return attr
 
@@ -106,7 +106,7 @@ class ExampleSensor(Entity):
             logger.debug("The wet bulb temperature is (t_wb)"+ str( self.t_wb ))
             logger.debug("cooling_efficiency = (t_in - t_out)/(t_in - t_wb)")
             # Formula: https://en.wikipedia.org/wiki/Evaporative_cooler
-            self._state = round( ((self.t_in - self.t_out)/(self.t_in - self.t_wb) ) * 100, 2)
+            self._state = round( ((self.t_in - self.t_out)/(self.t_in - self.t_wb) ) * 100, 1)
             logger.debug("The efficiency is           " + str(self._state))
         except ValueError as e:
             logger.warning("Some input sensor values are still unavailable")
