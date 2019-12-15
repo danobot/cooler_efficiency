@@ -1,3 +1,13 @@
+"""
+Evaporative Cooling efficiency calculator for Home Assistant.
+Maintainer:       Daniel Mason
+Version:          v0.0.1
+Documentation:    https://github.com/danobot/meteologic_metrics
+Issues Tracker:   Report issues on Github. Ensure you have the latest version. Include:
+                    * YAML configuration (for the misbehaving entity)
+                    * log entries at time of error and at time of initialisation
+"""
+
 from homeassistant.helpers.entity import Entity
 import logging
 import math as m
