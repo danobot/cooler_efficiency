@@ -4,5 +4,5 @@
   "documentation": "https://github.com/danobot/cooler_efficiency",
   "dependencies": [],
   "codeowners": ["@danobot"],
-  "requirements": ["psypy"]
+  "requirements": []
 }
