@@ -4,3 +4,6 @@ start_experiment:
     entity_id:
       description: Name(s) of the entities
       example: "sensor.aircon_efficiency"
+    fan_speed:
+      description: Speed setting of AC fan
+      example: 5

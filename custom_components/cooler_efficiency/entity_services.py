@@ -16,6 +16,8 @@ along with Cooler Efficiency.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 import voluptuous as vol
+from threading import Timer
+
 
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.entity_component import EntityComponent
@@ -41,4 +43,7 @@ def async_setup_entity_services(component: EntityComponent):
 
 
 def async_entity_service_start_experiment(self):
-    self.logger.debug("async_entity_service_start_experiment: " + str(dir(self)))
+    self.logger.debug("Starting AC experiemnt: " + str(dir(self)))
+    self.timer_handle = Timer(30, self.experiment_finished)
+    self.timer_handle.start()
+    self.previousSnapshot = self.take_snapshot()

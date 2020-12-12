@@ -20,3 +20,11 @@ along with Cooler Efficiency.  If not, see <https://www.gnu.org/licenses/>.
 
 # services
 SERVICE_START_EXPERIMENT = "start_experiment"
+CONF_NOTIFIER = 'csv_notifier'
+CONF_ENTITIES = 'entities'
+CONF_OUTDOOR_TEMP = 'outdoor_temp'
+CONF_WET_BULB = 'wet_bulb_temp'
+CONF_INDOOR_TEMP = 'indoor_temp'
+CONF_INDOOR_HUM = 'indoor_hum'
+CONF_PRESSURE = 'pressure'
+CONF_NAME = 'name'

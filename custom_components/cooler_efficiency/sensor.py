@@ -38,17 +38,18 @@ from datetime import datetime
 from .entity_services import (
     async_setup_entity_services,
 )
+from .const import (
+    CONF_NOTIFIER,
+    CONF_ENTITIES,
+    CONF_OUTDOOR_TEMP,
+    CONF_WET_BULB,
+    CONF_INDOOR_TEMP,
+    CONF_INDOOR_HUM,
+    CONF_PRESSURE,
+    CONF_NAME
+)
 
 logger = logging.getLogger(__name__)
-
-CONF_NOTIFIER = 'csv_notifier'
-CONF_ENTITIES = 'entities'
-CONF_OUTDOOR_TEMP = 'outdoor_temp'
-CONF_WET_BULB = 'wet_bulb_temp'
-CONF_INDOOR_TEMP = 'indoor_temp'
-CONF_INDOOR_HUM = 'indoor_hum'
-CONF_PRESSURE = 'pressure'
-CONF_NAME = 'name'
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
@@ -61,7 +62,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
     logger.debug("Entity Component: " + str(dir(component)))
     logger.debug("Entity Component.entities: " + str(component.entities))
     component.add_entities([sensor])
-    add_devices([sensor])
+    # add_devices([sensor])
 
 
 class EfficiencySensor(Entity):
@@ -69,12 +70,13 @@ class EfficiencySensor(Entity):
     from .entity_services import (
         async_entity_service_start_experiment as async_start_experiment
     )
-
-    # async def async_start_experiment(self, d):
-    #     self.logger.debug("async_start_experiment: " + str(d))
+    from .experiments import (
+        experiment_finished
+    )
 
     def __init__(self, hass, config):
         """Initialize the sensor."""
+        self.experiments = []
         self.t_outdoor = None
         self.t_indoor = None
         self.t_wb = None
@@ -86,9 +88,14 @@ class EfficiencySensor(Entity):
         self.entities = config.get(CONF_ENTITIES)
         self.wetBulb = config.get(CONF_WET_BULB)
         self.indoorTemp = config.get(CONF_INDOOR_TEMP)
+        self.indoorHum = config.get(CONF_INDOOR_HUM)
         self._name = config.get(CONF_NAME)
         self._state = None
         self.logger = logger
+
+    @property
+    def available(self):
+        return self._data_available()
 
     @property
     def name(self):
@@ -132,11 +139,13 @@ class EfficiencySensor(Entity):
 
         return attr
     def _outdoor_temp(self):
-        return self.hass.states.get(self.outdoorTemp).state
+        return float(self.hass.states.get(self.outdoorTemp).state)
     def _indoor_temp(self):
-        return self.hass.states.get(self.indoorTemp).state
+        return float(self.hass.states.get(self.indoorTemp).state)
+    def _indoor_hum(self):
+        return float(self.hass.states.get(self.indoorHum).state)
     def _wet_bulb(self):
-        return self.hass.states.get(self.wetBulb).state
+        return float(self.hass.states.get(self.wetBulb).state)
     def update(self):
         """
             Fetch new state data for the sensor.
@@ -144,10 +153,10 @@ class EfficiencySensor(Entity):
         """
         try:
             
-            self.t_wb  = self.toKelvin(float(self._wet_bulb()))
+            self.t_wb  = self.toKelvin(self._wet_bulb())
 
-            self.t_outdoor = self.toKelvin(float(self._outdoor_temp()))
-            self.t_indoor = self.toKelvin(float(self._indoor_temp()))
+            self.t_outdoor = self.toKelvin(self._outdoor_temp())
+            self.t_indoor = self.toKelvin(self._indoor_temp())
 
 
 
@@ -189,13 +198,20 @@ class EfficiencySensor(Entity):
         return True, "Yes"
 
     def _data_available(self):
-        return self.t_outdoor and self.t_indoor and self.t_wb and self.t_delta_best and self.t_delta_actual
+        d = [
+            self.indoorHum, self.indoorTemp, self.wetBulb, self.outdoorTemp
+        ]
+
+        for s in d:
+            if not self.hass.states.get(s).state:
+                return False
+        return True 
 
     def update_data(self):
         csv_data = []
         csv_header = []
         for e in self.entities:
-            logger.debug("Querying %s to log it" % (e))
+            self.logger.debug("Querying %s to log it" % (e))
             try:
                 entity = self.hass.states.get(e)
             except AttributeError:
@@ -216,14 +232,19 @@ class EfficiencySensor(Entity):
         message = ", ".join([str(e) for e in csv_data])
 
         domain, service = self.notifier.split('.')
-        csv_line =  "%s, %s" %(datetime.now() ,message)
-        logger.debug("csv_line: " + csv_line)
+        csv_line =  "%s, %s" %(datetime.now(), message)
+        self.logger.debug("csv_line: " + csv_line)
         self.hass.async_create_task(
             self.hass.services.async_call(
                 DOMAIN_NOTIFY, service, {ATTR_MESSAGE: csv_line}
             )
         )
-
+    def take_snapshot(self):
+        return {
+            "state": self._state,
+            "indoor_temp": self._indoor_temp(),
+            "outdoor_temp": self._outdoor_temp()
+        }
     @property
     def should_poll(self) -> bool:
         return True
