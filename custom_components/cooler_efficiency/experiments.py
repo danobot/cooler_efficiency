@@ -15,21 +15,28 @@ You should have received a copy of the GNU General Public License
 along with Cooler Efficiency.  If not, see <https://www.gnu.org/licenses/>.
 
 """
-
-
+from homeassistant.components.notify import (ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
 
 
 def experiment_finished(self):
     self.logger.debug("Experiment finished")
     self.currentSnapshot = self.take_snapshot()
     effDelta =  self.currentSnapshot["state"] - self.previousSnapshot["state"]
+    result = []
     if effDelta > 0:
-        self.logger.debug("The efficiency increased by %f degrees!" % (effDelta))
+        result.append("The efficiency increased by %f percent!" % (effDelta))
     else:
-        self.logger.debug("The efficiency decreased by %f degrees. Fail." % (effDelta))
+        result.append("The efficiency decreased by %f percent. Fail." % (effDelta))
 
     tempDelta =  self.currentSnapshot["indoor_temp"] - self.previousSnapshot["indoor_temp"]
     if tempDelta < 0:
-        self.logger.debug("The indoor temperature decreased by %f degrees!" % (tempDelta))
+        result.append("The indoor temperature decreased by %f degrees!" % (tempDelta))
     else:
-        self.logger.debug("The indoor temperature increased by %f degrees. Fail." % (tempDelta))
+        result.append("The indoor temperature increased by %f degrees. Fail." % (tempDelta))
+
+    humDelta =  self.currentSnapshot["indoor_hum"] - self.previousSnapshot["indoor_hum"]
+    result.append("The indoor hum changed by %f." % (humDelta))
+
+    message = '\n'.join(result)
+    self.logger.debug("Experiment outcome: " + message)
+    self.notify(self.experimentNotifier, message)

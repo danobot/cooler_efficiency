@@ -34,7 +34,7 @@ from .const import (
 def async_setup_entity_services(component: EntityComponent):
     """ Setup Entity services."""
 
-    component.logger.debug("Setting up entity services")
+    component.logger.debug("Setting up entity services")    
     component.async_register_entity_service(SERVICE_START_EXPERIMENT, {}, "async_start_experiment")
 
     return True
@@ -43,7 +43,12 @@ def async_setup_entity_services(component: EntityComponent):
 
 
 def async_entity_service_start_experiment(self):
-    self.logger.debug("Starting AC experiemnt: " + str(dir(self)))
-    self.timer_handle = Timer(30, self.experiment_finished)
-    self.timer_handle.start()
-    self.previousSnapshot = self.take_snapshot()
+    if self.timer_handle and self.timer_handle.is_alive():
+        self.logger.debug("Existing experiment in progress.")
+        self.notify(self.experimentNotifier, "Existing experiment in progress.")
+    else:
+        self.notify(self.experimentNotifier, "Starting new AC experiemnt")
+        self.logger.debug("Starting new AC experiemnt: ")
+        self.timer_handle = Timer(300, self.experiment_finished)
+        self.previousSnapshot = self.take_snapshot()
+        self.timer_handle.start()

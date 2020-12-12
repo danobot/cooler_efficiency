@@ -46,7 +46,8 @@ from .const import (
     CONF_INDOOR_TEMP,
     CONF_INDOOR_HUM,
     CONF_PRESSURE,
-    CONF_NAME
+    CONF_NAME,
+    CONF_EXPERIMENT_NOTIFIER
 )
 
 logger = logging.getLogger(__name__)
@@ -59,8 +60,8 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
 
     sensor = EfficiencySensor(hass, config)
     async_setup_entity_services(component)
-    logger.debug("Entity Component: " + str(dir(component)))
-    logger.debug("Entity Component.entities: " + str(component.entities))
+    # logger.debug("Entity Component: " + str(dir(component)))
+    # logger.debug("Entity Component.entities: " + str(component.entities))
     component.add_entities([sensor])
     # add_devices([sensor])
 
@@ -79,16 +80,19 @@ class EfficiencySensor(Entity):
         self.experiments = []
         self.t_outdoor = None
         self.t_indoor = None
+        self.h_indoor = None
         self.t_wb = None
         self.t_delta_best = None
         self.t_delta_actual = None
         self.hass = hass
         self.outdoorTemp = config.get(CONF_OUTDOOR_TEMP)
-        self.notifier = config.get(CONF_NOTIFIER)
+        self.notifier = config.get(CONF_NOTIFIER, None)
+        self.experimentNotifier = config.get(CONF_EXPERIMENT_NOTIFIER, None)
         self.entities = config.get(CONF_ENTITIES)
         self.wetBulb = config.get(CONF_WET_BULB)
         self.indoorTemp = config.get(CONF_INDOOR_TEMP)
         self.indoorHum = config.get(CONF_INDOOR_HUM)
+        self.timer_handle = None
         self._name = config.get(CONF_NAME)
         self._state = None
         self.logger = logger
@@ -125,14 +129,16 @@ class EfficiencySensor(Entity):
         if self._data_available():
             turn_on_ac, turn_on_ac_text = self._should_turn_on_ac()
             attr = {
-                    "indoor temp": round(self.t_outdoor, 2),
-                    "outdoor temp": round(self.t_indoor, 2),
+                    "outdoor temp": round(self.t_outdoor, 2),
+                    "indoor temp": round(self.t_indoor, 2),
+                    "indoor hum": round(self.h_indoor, 2),
                     "actual temp delta": round(self.t_delta_actual, 2),
                     "optimal temp delta": round(self.t_delta_best, 2),
                     "wet bulb temp": round(self.t_wb, 2),
                     "ac recommendation":  turn_on_ac,
                     "ac recommendation description":  turn_on_ac_text
             }
+        attr["experimenting"] = "in progress" if self.timer_handle is not None and self.timer_handle.is_alive() else "idle"
         attr["wet bulb sensor"] = self.wetBulb
         attr["Outside sensor"] = self.outdoorTemp
         attr["Indoor sensor"] =self.indoorTemp
@@ -157,7 +163,7 @@ class EfficiencySensor(Entity):
 
             self.t_outdoor = self.toKelvin(self._outdoor_temp())
             self.t_indoor = self.toKelvin(self._indoor_temp())
-
+            self.h_indoor = self._indoor_hum()
 
 
             logger.debug("Calculation ------  " )
@@ -203,11 +209,18 @@ class EfficiencySensor(Entity):
         ]
 
         for s in d:
-            if not self.hass.states.get(s).state:
+            state = self.hass.states.get(s)
+            # self.logger.debug("Entity %s = %s " % (s, str(state)))
+            if state is None: 
                 return False
+            # self.logger.debug("state of %s is %s " % (s, str(state.state)))
+            if state.state == 'unknown':
+                return False
+            
         return True 
 
     def update_data(self):
+        exclude = ['unit_of_measurement', 'friendly_name']
         csv_data = []
         csv_header = []
         for e in self.entities:
@@ -223,27 +236,33 @@ class EfficiencySensor(Entity):
             
             logger.debug("Attributes %s" % (str(attributes)))
             for key, value in attributes.iteritems():
-                if not isinstance(value, str):
+                if not isinstance(value, str) and key not in exclude:
                     csv_header.append(key)
                     csv_data.append(value)
 
         csv_data.append('"%s"' % (', '.join(csv_header)))
 
         message = ", ".join([str(e) for e in csv_data])
-
-        domain, service = self.notifier.split('.')
         csv_line =  "%s, %s" %(datetime.now(), message)
         self.logger.debug("csv_line: " + csv_line)
-        self.hass.async_create_task(
-            self.hass.services.async_call(
-                DOMAIN_NOTIFY, service, {ATTR_MESSAGE: csv_line}
+        self.notify(self.notifier, csv_line)
+
+    def notify(self, notifier, message):
+        if notifier:
+            domain, service = notifier.split('.')
+            self.hass.async_create_task(
+                self.hass.services.async_call(
+                    DOMAIN_NOTIFY, service, {ATTR_MESSAGE: message}
+                )
             )
-        )
+
+
     def take_snapshot(self):
         return {
             "state": self._state,
-            "indoor_temp": self._indoor_temp(),
-            "outdoor_temp": self._outdoor_temp()
+            "indoor_temp": self.t_indoor,
+            "outdoor_temp": self.t_outdoor,
+            "indoor_hum": self.h_indoor,
         }
     @property
     def should_poll(self) -> bool:
