@@ -29,6 +29,7 @@ Issues Tracker:   Report issues on Github. Ensure you have the latest version. I
 from homeassistant.helpers.entity import Entity
 import logging
 import math as m
+from homeassistant.helpers import entity_platform, service
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.components.notify import (
     ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
@@ -48,23 +49,30 @@ CONF_INDOOR_TEMP = 'indoor_temp'
 CONF_INDOOR_HUM = 'indoor_hum'
 CONF_PRESSURE = 'pressure'
 CONF_NAME = 'name'
+
+
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Setup the sensor platform."""
     component = EntityComponent(logger, DOMAIN_SENSOR, hass)
 
-    sensor = ExampleSensor(hass, config)
+
+    sensor = EfficiencySensor(hass, config)
     async_setup_entity_services(component)
+    logger.debug("Entity Component: " + str(dir(component)))
+    logger.debug("Entity Component.entities: " + str(component.entities))
+    component.add_entities([sensor])
+    add_devices([sensor])
 
-    component.async_add_entities([sensor])
-    # add_devices([sensor])
 
-
-class ExampleSensor(Entity):
+class EfficiencySensor(Entity):
     """Representation of a Sensor."""
     from .entity_services import (
-        async_entity_service_start_experiment as async_start_experiment,
+        async_entity_service_start_experiment as async_start_experiment
     )
-    
+
+    # async def async_start_experiment(self, d):
+    #     self.logger.debug("async_start_experiment: " + str(d))
+
     def __init__(self, hass, config):
         """Initialize the sensor."""
         self.t_outdoor = None
@@ -127,37 +135,33 @@ class ExampleSensor(Entity):
         return self.hass.states.get(self.outdoorTemp).state
     def _indoor_temp(self):
         return self.hass.states.get(self.indoorTemp).state
+    def _wet_bulb(self):
+        return self.hass.states.get(self.wetBulb).state
     def update(self):
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
+        """
+            Fetch new state data for the sensor.
+            This is the only method that should fetch new data for Home Assistant.
         """
         try:
             
-            self.t_wb  = self.toKelvin(float(self.hass.states.get(self.wetBulb).state))
-            logger.debug("Temp outdoor (raw sensor value): " + str(self._outdoor_temp))
-            logger.debug("Temp indoor (raw sensor value):  " + str(self._indoor_temp))
-            logger.debug("wet bulb (raw sensor value):   " + str(self.t_wb))
+            self.t_wb  = self.toKelvin(float(self._wet_bulb()))
 
-            self.t_outdoor = self.toKelvin(float(self.hass.states.get(self.outdoorTemp).state))
-            self.t_indoor = self.toKelvin(float(self.hass.states.get(self.indoorTemp).state))
-
-            logger.debug("Temp outdoor:      " + str(self.t_outdoor))
-            logger.debug("Temp indoor :      " + str(self.t_indoor))
-            logger.debug("wet bulb:       " + str(self.t_wb))
+            self.t_outdoor = self.toKelvin(float(self._outdoor_temp()))
+            self.t_indoor = self.toKelvin(float(self._indoor_temp()))
 
 
-            logger.debug("The wet bulb temperature is "+ str(self.t_wb))
+
             logger.debug("Calculation ------  " )
-            logger.debug("The dry bulb temperature (t_in): "+ str(self.t_outdoor))
-            logger.debug("The dry bulb temperature (t_out): "+ str(self.t_indoor))
-            logger.debug("The wet bulb temperature is (t_wb)"+ str( self.t_wb ))
+            logger.debug("Temp outdoor (Kelvin)  (t_in):    " + str(self.t_outdoor))
+            logger.debug("Temp indoor (Kelvin) (t_out):     " + str(self.t_indoor))
+            logger.debug("Wet bulb temp (best case) (t_wb): " + str(self.t_wb))
             logger.debug("cooling_efficiency = (t_in - t_out)/(t_in - t_wb)")
             self.t_delta_actual = self.t_outdoor - self.t_indoor
             self.t_delta_best = self.t_outdoor - self.t_wb
             # Formula: https://en.wikipedia.org/wiki/Evaporative_cooler
             self._state = round( (self.t_delta_actual/ self.t_delta_best ) * 100, 1)
-            logger.debug("The efficiency is           " + str(self._state))
+            logger.debug("cooling_efficiency                 " + str(self._state))
+
             self.update_data()
             self.update_recommendation()
 

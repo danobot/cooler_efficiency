@@ -41,4 +41,4 @@ def async_setup_entity_services(component: EntityComponent):
 
 
 def async_entity_service_start_experiment(self):
-    self.logger.debug("async_entity_service_start_experiment")
+    self.logger.debug("async_entity_service_start_experiment: " + str(dir(self)))
