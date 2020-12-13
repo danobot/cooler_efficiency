@@ -16,7 +16,7 @@ along with Cooler Efficiency.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 from homeassistant.components.notify import (ATTR_MESSAGE, DOMAIN as DOMAIN_NOTIFY)
-
+from .const import *
 
 def experiment_finished(self):
     self.logger.debug("Experiment finished")
@@ -38,5 +38,13 @@ def experiment_finished(self):
     result.append("The indoor hum changed by %f." % (humDelta))
 
     message = '\n'.join(result)
+    self.data["experiments"].append({
+        "previous": self.previousSnapshot,
+        "current": self.currentSnapshot,
+        "efficiencyDelta": effDelta,
+        "tempDelta": tempDelta,
+        "humDelta": humDelta
+    })
     self.logger.debug("Experiment outcome: " + message)
+    self.data[RESULT] = message
     self.notify(self.experimentNotifier, message)

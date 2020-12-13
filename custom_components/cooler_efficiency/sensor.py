@@ -38,17 +38,7 @@ from datetime import datetime
 from .entity_services import (
     async_setup_entity_services,
 )
-from .const import (
-    CONF_NOTIFIER,
-    CONF_ENTITIES,
-    CONF_OUTDOOR_TEMP,
-    CONF_WET_BULB,
-    CONF_INDOOR_TEMP,
-    CONF_INDOOR_HUM,
-    CONF_PRESSURE,
-    CONF_NAME,
-    CONF_EXPERIMENT_NOTIFIER
-)
+from .const import *
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +68,7 @@ class EfficiencySensor(Entity):
     def __init__(self, hass, config):
         """Initialize the sensor."""
         self.experiments = []
+        self.data = {}
         self.t_outdoor = None
         self.t_indoor = None
         self.h_indoor = None
@@ -138,6 +129,10 @@ class EfficiencySensor(Entity):
                     "ac recommendation":  turn_on_ac,
                     "ac recommendation description":  turn_on_ac_text
             }
+
+        if RESULT in self.data:
+            attr["experiment result"] = self.data[RESULT]
+
         attr["experimenting"] = "in progress" if self.timer_handle is not None and self.timer_handle.is_alive() else "idle"
         attr["wet bulb sensor"] = self.wetBulb
         attr["Outside sensor"] = self.outdoorTemp
@@ -190,6 +185,8 @@ class EfficiencySensor(Entity):
             logger.error(e)
 
     def _should_turn_on_ac(self):
+        if self._state is None:
+            return False, "initialising..."
         if self._state > 100:
             logger.debug("_should_turn_on_ac: No, it already cooler than the best AC can achieve. This state is also triggered if your temperature sensors are inaccurate (+/- 1-2 degrees)")
             return False, "No, it already cooler than the best AC can achieve. turning it on now would increase the temperature and humidity inside."

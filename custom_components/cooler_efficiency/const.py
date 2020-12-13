@@ -29,3 +29,5 @@ CONF_INDOOR_HUM = 'indoor_hum'
 CONF_PRESSURE = 'pressure'
 CONF_NAME = 'name'
 CONF_EXPERIMENT_NOTIFIER = 'experiment_notifier'
+
+RESULT = 'result'
