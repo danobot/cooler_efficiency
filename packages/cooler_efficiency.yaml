@@ -1,0 +1,60 @@
+
+binary_sensor:
+  - platform: trend
+    sensors:
+      aircon_efficiency_trend:
+        entity_id: sensor.aircon_efficiency
+        min_gradient: 0.02
+        max_samples: 5    
+sensor:
+  - platform: cooler_efficiency
+    name: "Aircon Efficiency"
+    outdoor_temp: sensor.outside_temp
+    indoor_temp: sensor.aircon_temp
+    indoor_hum: sensor.aircon_hum
+    wet_bulb_temp: sensor.meteorologic_metrics
+    csv_notifier: notify.aircon_data
+    experiment_notifier: notify.matrix_notify
+    entities:
+      - sensor.bedroom_temp
+  - platform: statistics
+    name: aircon_efficiency_stats
+    entity_id: sensor.aircon_efficiency
+    max_age:
+      minutes: 30
+  - platform: template
+    sensors:
+      aircon_optimal_temp_delta:
+        value_template: "{{ state_attr('sensor.aircon_efficiency', 'optimal temp delta') | float }}"
+        unit_of_measurement: "°C"
+      aircon_exp_result:
+        value_template: "{{ state_attr('sensor.aircon_efficiency', 'experiment result') }}"   
+      aircon_actual_temp_delta:
+        value_template: "{{ state_attr('sensor.aircon_efficiency', 'actual temp delta') | float }}"    
+        unit_of_measurement: "°C"
+      aircon_min_possible_temp:
+        value_template: "{{ state_attr('sensor.aircon_efficiency', 'wet bulb temp') | float }}"    
+        unit_of_measurement: "°C"
+
+  - platform: meteorologic_metrics
+    name: "Meteorologic Metrics"
+    temp: sensor.outside_temp
+    hum: sensor.outside_hum
+    pressure: sensor.pixel_2_xl_pressure_sensor
+
+automation:
+  
+  - alias: Report on Aircon Effectiveness
+    trigger:
+      platform: state
+      entity_id: binary_sensor.lounge_hum_trend
+      to: 'on'
+    action:
+      - service: notify.matrix_notify
+        data_template:
+          message: "Logging A/C metrics. Update fan speed dial."
+      - delay:
+          minutes: 5
+      - service: notify.aircon_model
+        data_template: 
+          message: ",{{states('sensor.living_room_temp')}},{{states('sensor.living_room_hum')}},{{states('sensor.outside_temp')}},{{states('sensor.outside_hum')}},{{states('input_number.aircon_fan_speed')|round}}"

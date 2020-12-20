@@ -67,8 +67,9 @@ class EfficiencySensor(Entity):
 
     def __init__(self, hass, config):
         """Initialize the sensor."""
-        self.experiments = []
-        self.data = {}
+        self.data = {
+            "experiments": []
+        }
         self.t_outdoor = None
         self.t_indoor = None
         self.h_indoor = None
@@ -191,7 +192,11 @@ class EfficiencySensor(Entity):
             logger.debug("_should_turn_on_ac: No, it already cooler than the best AC can achieve. This state is also triggered if your temperature sensors are inaccurate (+/- 1-2 degrees)")
             return False, "No, it already cooler than the best AC can achieve. turning it on now would increase the temperature and humidity inside."
         
-        if self.t_delta_actual < 2:
+        if self.t_delta_actual < 0:
+            logger.debug("_should_turn_on_ac: It is cooler outside, turn on the AC on venticlation mode to circulate the air.")
+            return False, "No. it is cooler outside, turn on the AC on venticlation mode to circulate the air."
+        
+        if self.t_delta_actual < 2 and self.t_delta_actual > 0:
             logger.debug("_should_turn_on_ac: No, indoor temp is only %s degrees from optimal temperature." % (self.t_delta_actual))
             return False, "No, indoor temp is only %s degrees from optimal temperature. Turning it on now, would have a small to no effect on temperature and would unesearily increase indoor humidity." % (self.t_delta_actual)
         
@@ -232,10 +237,10 @@ class EfficiencySensor(Entity):
             csv_data.append(state)
             
             logger.debug("Attributes %s" % (str(attributes)))
-            for key, value in attributes.iteritems():
-                if not isinstance(value, str) and key not in exclude:
+            for key in attributes.keys():
+                if not isinstance(attributes[key], str) and key not in exclude:
                     csv_header.append(key)
-                    csv_data.append(value)
+                    csv_data.append(attributes[key])
 
         csv_data.append('"%s"' % (', '.join(csv_header)))
 

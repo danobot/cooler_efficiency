@@ -1,17 +1,25 @@
 # Introduction
-This sensor component calculates the efficiency (%) of your evaporative air conditioning system given sensory inputs such as temperature, humidity and atmospheric pressure.
+This sensor component calculates the efficiency (%) of your evaporative air conditioning system given sensory inputs such as temperature, humidity and atmospheric pressure. It allows you to run experiments to determine the optimal fan speed for evaporative air conditioner.
 
+**Entity Card with Attributes**
+![Entity Attributes](image/entity.png)
 
-![Entity Attributes](entity.png)
+**Efficiency vs Outdoor, Indoor and Wet Bulb Temperature over Time**
+![Efficiency vs Outdoor, Indoor and Wet Bulb Temperature over Time](image/graph.png)
 
 # Basic Configuration
 
 ```
 - platform: cooler_efficiency
-  name: "Aircon Efficiency Bedroom"
+  name: "Cooling Efficiency"
   outdoor_temp: sensor.outside_temp
-  indoor_temp: sensor.bedroom_temp
+  indoor_temp: sensor.aircon_temp
+  indoor_hum: sensor.aircon_hum
   wet_bulb_temp: sensor.meteorologic_metrics
+  csv_notifier: notify.aircon_data
+  experiment_notifier: notify.matrix_notify     # for experiment notifications
+  entities:                                     # will be logged to `csv_notifier`
+    - sensor.bedroom_temp
 ```
 
 Note that this component requires the wet bulb temperature (WBT, a metric measured by a temperature sensor wrapped in a wet cloth). The purpose of this is to measure the cooling effect of evaporation. Since this is impractical to measure without special equipment, I have created another component called `meterologic_metrics` which calculates the WBT given the temperature, humidity and pressure at your location.
